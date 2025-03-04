@@ -1,35 +1,47 @@
 require "sinatra"
 require "sinatra/reloader"
+
 require "http"
 require "json"
 require "dotenv/load"
 
-key = ENV.fetch("EXCHANGE_RATE_KEY")
-currencies_url = "https://api.exchangerate.host/list?access_key=#{key}"
-currencies_data = (HTTP.get(currencies_url)).to_s
-parsed_currencies = JSON.parse(currencies_data)
-ccy_list = parsed_currencies["currencies"].keys - ["BOB"]
-
-
-
 get("/") do
-  @currencies_list = ccy_list
-  erb(:home)
+  @list_url = "https://api.exchangerate.host/list?access_key=" + ENV.fetch("FX_KEY")
+  @raw_response = HTTP.get(@list_url)
+  @string_response = @raw_response.to_s
+  # parse to hash
+  @parsed_response = JSON.parse(@string_response)
+  
+  @currencies = @parsed_response.fetch("currencies")
+
+  erb(:homepage)
 end
 
-get("/:currency") do
-  @exchange_from = params.fetch("currency")
-  @currencies_list = ccy_list
-  erb(:convert_ccy)
+
+get("/:from_currency") do
+  @list_url = "https://api.exchangerate.host/list?access_key=" + ENV.fetch("EXCHANGE_RATE_KEY")
+  @raw_response = HTTP.get(@list_url)
+  @string_response = @raw_response.to_s
+  @parsed_response = JSON.parse(@string_response)
+  @currencies = @parsed_response.fetch("currencies")
+
+  @original_currency = params.fetch("from_currency")
+
+  erb(:convert_a)
 end
 
-get("/:from/:to") do
-  @from = params.fetch("from")
-  @to = params.fetch("to")
-  conversion_url = "https://api.exchangerate.host/convert?from=#{@from}&to=#{@to}&amount=1&access_key=#{key}"
-  conversion_data = HTTP.get(conversion_url).to_s
-  parsed_conversion = JSON.parse(conversion_data)
-  @result = parsed_conversion["result"]
-  erb(:converted)
-end
 
+get("/:from_currency/:to_currency") do
+
+  @original_currency = params.fetch("from_currency")
+  @destination_currency = params.fetch("to_currency")
+
+  @convert_url = "https://api.exchangerate.host/convert?from=#{@original_currency}&to=#{@destination_currency}&amount=1&access_key=#{ENV.fetch("EXCHANGE_RATE_KEY")}"
+  @raw_response = HTTP.get(@convert_url)
+  @string_response = @raw_response.to_s
+  @parsed_response = JSON.parse(@string_response)
+  @result = @parsed_response.fetch("result").to_s
+
+
+  erb(:result)
+end
